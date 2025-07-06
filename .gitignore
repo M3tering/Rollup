@@ -10,5 +10,19 @@ out/
 # Docs
 docs/
 
+# misc
+.DS_Store
+*.pem
+
 # Dotenv file
+.env*.local
 .env
+
+# IDE
+.deps/
+.vscode/
+.prettierrc.json
+src/artifacts/
+
+# foundry
+dependencies/

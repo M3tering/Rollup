@@ -1,6 +1,27 @@
 [profile.default]
 src = "src"
 out = "out"
-libs = ["lib"]
+optimizer = true
+optimizer-runs = 1000
+solc-version = "0.8.28"
+libs = ["dependencies"]
+
+remappings = [
+    "solady/=dependencies/solady-0.1.7/",
+]
+
+[soldeer]
+remappings_generate = false
+remappings_location = "config"
+
+[dependencies]
+forge-std = "1.9.5"
+solady = "0.1.7"
+
+[fuzz]
+seed = "0x544D"
+
+[invariant]
+runs = 256
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
