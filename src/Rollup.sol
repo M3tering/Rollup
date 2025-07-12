@@ -2,7 +2,7 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity ^0.8.28;
 
-import {SSTORE2} from "solady/src/utils/SSTORE2.sol";
+import {SSTORE2} from "solady@0.1.7/src/utils/SSTORE2.sol";
 
 import {ISP1Verifier} from "./interfaces/ISP1Verifier.sol";
 import {IRollup} from "./interfaces/IRollup.sol";
