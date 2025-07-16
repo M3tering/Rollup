@@ -24,7 +24,7 @@ contract Rollup is IRollup {
     ) external {
         // verifies proofs via SP1 Groth16 verifier gateway; reverts here if proof is invalid
         ISP1Verifier(0x397A5f7f3dBd538f23DE225B51f532c34448dA9B).verifyProof(
-            0x1179a1ee553885480360014550c764d67185dd60b242af4928e2f41f3a222cd6, // ToDo: set to actual SP1 program vKey
+            0x005120317542200324c9509e78315ad70799268f02d21504709c8973d2493203, // ToDo: set to actual SP1 program vKey
             bytes.concat(
                 blockhash(anchorBlock), // ethereum state commitment
                 stateAddress(chainLength, this.totalizer.selector).codehash, // parent state commitment
