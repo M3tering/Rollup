@@ -7,19 +7,19 @@ interface IRollup {
         address indexed from,
         uint256 indexed chainLength,
         uint256 indexed anchorBlock,
-        bytes totalizerData,
-        bytes nonceData,
+        bytes accountBlob,
+        bytes nonceBlob,
         bytes proof
     );
 
     function commitState(
         uint256 anchorBlock,
-        bytes calldata totalizerData,
-        bytes calldata nonceData,
+        bytes calldata accountBlob,
+        bytes calldata nonceBlob,
         bytes calldata proof
     ) external;
 
-    function totalizer(uint256 tokenId) external view returns (bytes6);
+    function account(uint256 tokenId) external view returns (bytes6);
 
     function nonce(uint256 tokenId) external view returns (bytes6);
 
