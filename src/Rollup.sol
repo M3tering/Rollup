@@ -59,7 +59,7 @@ contract Rollup is IRollup {
 
     function state(uint256 at, bytes4 selector, uint256 tokenId) public view returns (bytes6) {
         address pointer = stateAddress(at, selector);
-        if (tokenId == 0) return bytes6(SSTORE2.read(pointer, 0, 5));
+        if (tokenId == 0) return bytes6(bytes.concat(hex"00", SSTORE2.read(pointer, 0, 5)));
         uint256 index = (tokenId * 6) - 1;
         return bytes6(SSTORE2.read(pointer, index, index + 6));
     }
