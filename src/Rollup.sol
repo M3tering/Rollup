@@ -8,25 +8,28 @@ import {IRollup} from "./interfaces/IRollup.sol";
 
 /// @custom:security-contact info@whynotswitch.com
 contract Rollup is IRollup {
+    bytes32 public anchorBlock;
     uint256 public chainLength;
+    address constant SP1_GROTH16_GATEWAY = 0x397A5f7f3dBd538f23DE225B51f532c34448dA9B;
+    bytes32 constant SP1_PROGRAM_VKEY = 0x005120317542200324c9509e78315ad70799268f02d21504709c8973d2493203; // ToDo: set to actual SP1 program vKey
 
     constructor() {
+        anchorBlock = blockhash(block.number - 1);
         SSTORE2.writeDeterministic(hex"00", _pointer(this.account.selector, 0));
         SSTORE2.writeDeterministic(hex"00", _pointer(this.nonce.selector, 0));
-        emit NewState(msg.sender, 0, 0, hex"", hex"", hex"");
+        emit NewState(msg.sender, hex"", 0, hex"", hex"", hex"");
     }
 
     function commitState(
-        uint256 anchorBlock,
         bytes calldata accountBlob,
         bytes calldata nonceBlob,
         bytes calldata proof
     ) external {
         // verifies proofs via SP1 Groth16 verifier gateway; reverts here if proof is invalid
-        ISP1Verifier(0x397A5f7f3dBd538f23DE225B51f532c34448dA9B).verifyProof(
-            0x005120317542200324c9509e78315ad70799268f02d21504709c8973d2493203, // ToDo: set to actual SP1 program vKey
+        ISP1Verifier(SP1_GROTH16_GATEWAY).verifyProof(
+            SP1_PROGRAM_VKEY, // ToDo: set to actual SP1 program vKey
             bytes.concat(
-                blockhash(anchorBlock), // ethereum state commitment
+                anchorBlock, // ethereum state commitment
                 stateAddress(chainLength, this.account.selector).codehash, // parent state commitment
                 stateAddress(chainLength, this.nonce.selector).codehash, // parent state commitment
                 hex"00", accountBlob, // proposed account state
@@ -36,7 +39,7 @@ contract Rollup is IRollup {
         );
 
         chainLength++;
-        emit NewState(msg.sender, chainLength, anchorBlock, accountBlob, nonceBlob, proof);
+        emit NewState(msg.sender, anchorBlock, chainLength, accountBlob, nonceBlob, proof);
         SSTORE2.writeDeterministic(accountBlob, _pointer(this.account.selector, chainLength));
         SSTORE2.writeDeterministic(nonceBlob, _pointer(this.nonce.selector, chainLength));
     }

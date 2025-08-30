@@ -5,19 +5,22 @@ pragma solidity ^0.8.28;
 interface IRollup {
     event NewState(
         address indexed from,
+        bytes32 indexed anchorBlock,
         uint256 indexed chainLength,
-        uint256 indexed anchorBlock,
         bytes accountBlob,
         bytes nonceBlob,
         bytes proof
     );
 
     function commitState(
-        uint256 anchorBlock,
         bytes calldata accountBlob,
         bytes calldata nonceBlob,
         bytes calldata proof
     ) external;
+
+    function anchorBlock() external view returns (bytes32);
+
+    function chainLength() external view returns (uint256);
 
     function account(uint256 tokenId) external view returns (bytes6);
 

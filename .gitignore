@@ -22,7 +22,7 @@ docs/
 .deps/
 .vscode/
 .prettierrc.json
-*/artifacts/
+artifacts/
 
 # foundry
 dependencies/
