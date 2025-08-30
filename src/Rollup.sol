@@ -39,6 +39,7 @@ contract Rollup is IRollup {
         );
 
         chainLength++;
+        anchorBlock = blockhash(block.number - 1);
         emit NewState(msg.sender, anchorBlock, chainLength, accountBlob, nonceBlob, proof);
         SSTORE2.writeDeterministic(accountBlob, _pointer(this.account.selector, chainLength));
         SSTORE2.writeDeterministic(nonceBlob, _pointer(this.nonce.selector, chainLength));
