@@ -66,6 +66,6 @@ contract Rollup is IRollup {
     }
 
     function stateAddress(uint256 at, uint256 io) public view returns (address) {        
-        return LibRLP.computeAddress(address(this), at * 2 + 1 + io == 0 ? 0: 1);
+        return LibRLP.computeAddress(address(this), at * 2 + 1 + (io == 0 ? 0: 1));
     }
 }
