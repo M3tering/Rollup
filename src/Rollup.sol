@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
+import {LibRLP} from "solady@0.1.7/src/utils/LibRLP.sol";
 import {SSTORE2} from "solady@0.1.7/src/utils/SSTORE2.sol";
 
 import {ISP1Verifier} from "./interfaces/ISP1Verifier.sol";
@@ -15,60 +16,56 @@ contract Rollup is IRollup {
 
     constructor() {
         anchorBlock = blockhash(block.number - 1);
-        SSTORE2.writeDeterministic(hex"00", _pointer(this.account.selector, 0));
-        SSTORE2.writeDeterministic(hex"00", _pointer(this.nonce.selector, 0));
+        SSTORE2.write(hex"00");  //this contract nonce = 2x chainLength +1
+        SSTORE2.write(hex"00");  //this contract nonce = 2x chainLength +2
         emit NewState(msg.sender, hex"", 0, hex"", hex"", hex"");
     }
 
-    function commitState(
-        bytes calldata accountBlob,
-        bytes calldata nonceBlob,
-        bytes calldata proof
-    ) external {
+    function commitState(bytes calldata accountBlob, bytes calldata nonceBlob, bytes calldata proof) external {
         // verifies proofs via SP1 Groth16 verifier gateway; reverts here if proof is invalid
-        ISP1Verifier(SP1_GROTH16_GATEWAY).verifyProof(
-            SP1_PROGRAM_VKEY, // ToDo: set to actual SP1 program vKey
-            bytes.concat(
-                anchorBlock, // ethereum state commitment
-                stateAddress(chainLength, this.account.selector).codehash, // parent state commitment
-                stateAddress(chainLength, this.nonce.selector).codehash, // parent state commitment
-                hex"00", accountBlob, // proposed account state
-                hex"00", nonceBlob // proposed nonce state
-            ),
-            proof
-        );
+        ISP1Verifier(SP1_GROTH16_GATEWAY)
+            .verifyProof(
+                SP1_PROGRAM_VKEY, // ToDo: set to actual SP1 program vKey
+                bytes.concat(
+                    anchorBlock, // ethereum state commitment
+                    stateAddress(chainLength, 0).codehash, // parent state commitment
+                    stateAddress(chainLength, 1).codehash, // parent state commitment
+                    hex"00",
+                    accountBlob, // proposed account state
+                    hex"00",
+                    nonceBlob // proposed nonce state
+                ),
+                proof
+            );
 
         chainLength++;
         anchorBlock = blockhash(block.number - 1);
         emit NewState(msg.sender, anchorBlock, chainLength, accountBlob, nonceBlob, proof);
-        SSTORE2.writeDeterministic(accountBlob, _pointer(this.account.selector, chainLength));
-        SSTORE2.writeDeterministic(nonceBlob, _pointer(this.nonce.selector, chainLength));
+        // Keep this order: exactly two CREATEs per committed state, account first.
+        SSTORE2.write(accountBlob);  // this contract nonce = 2x chainLength +1 
+        SSTORE2.write(nonceBlob);  // this contract nonce = 2x chainLength +2
     }
 
     function account(uint256 tokenId) external view returns (bytes6) {
-        return state(chainLength, this.account.selector, tokenId);
+        return state(chainLength, 0, tokenId);
     }
 
     function nonce(uint256 tokenId) external view returns (bytes6) {
-        return state(chainLength, this.nonce.selector, tokenId);
+        return state(chainLength, 1, tokenId);
     }
 
     function latestStateAddress(uint256 io) external view returns (address) {
-        return stateAddress(chainLength, io == 0 ? this.account.selector : this.nonce.selector);
+        return stateAddress(chainLength, io);
     }
 
-    function stateAddress(uint256 at, bytes4 selector) public view returns (address) {
-        return SSTORE2.predictDeterministicAddress(_pointer(selector, at));
-    }
-
-    function state(uint256 at, bytes4 selector, uint256 tokenId) public view returns (bytes6) {
-        address pointer = stateAddress(at, selector);
+    function state(uint256 at, uint256 io, uint256 tokenId) public view returns (bytes6) {
+        address pointer = stateAddress(at, io);
         if (tokenId == 0) return bytes6(bytes.concat(hex"00", SSTORE2.read(pointer, 0, 5)));
         uint256 index = (tokenId * 6) - 1;
         return bytes6(SSTORE2.read(pointer, index, index + 6));
     }
 
-    function _pointer(bytes4 selector, uint256 at) private pure returns (bytes32) {
-        return bytes32(abi.encodePacked(selector, uint224(at)));
+    function stateAddress(uint256 at, uint256 io) public view returns (address) {        
+        return LibRLP.computeAddress(address(this), at * 2 + 1 + io == 0 ? 0: 1);
     }
 }

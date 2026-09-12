@@ -28,7 +28,7 @@ interface IRollup {
 
     function latestStateAddress(uint256 io) external view returns (address);
 
-    function state(uint256 at, bytes4 selector, uint256 tokenId) external view returns (bytes6);
+    function state(uint256 at, uint256 io, uint256 tokenId) external view returns (bytes6);
 
-    function stateAddress(uint256 at, bytes4 selector) external view returns (address);
+    function stateAddress(uint256 at, uint256 io) external view returns (address);
 }
