@@ -27,6 +27,10 @@ jobs:
         run: |
           forge --version
 
+      - name: Install dependencies
+        run: |
+          forge soldeer install
+
       - name: Run Forge build
         run: |
           forge build --sizes
@@ -34,5 +38,8 @@ jobs:
 
       - name: Run Forge tests
         run: |
-          forge test -vvv
+          forge test -vvv --gas-report
         id: test
+      
+      - name: Run snapshot
+        run: forge snapshot
