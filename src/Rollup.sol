@@ -12,8 +12,9 @@ contract Rollup is IRollup {
     bytes32 public anchorBlock;
     uint256 public chainLength;
     bytes constant INCIPIT = hex"00";
-    address constant SP1_GROTH16_GATEWAY = 0x397A5f7f3dBd538f23DE225B51f532c34448dA9B;
-    bytes32 constant SP1_PROGRAM_VKEY = 0x005120317542200324c9509e78315ad70799268f02d21504709c8973d2493203; // ToDo: set to actual SP1 program vKey
+    uint256 public constant QUOTA = 6; 
+    address public constant SP1_GROTH16_GATEWAY = 0x397A5f7f3dBd538f23DE225B51f532c34448dA9B;
+    bytes32 public constant SP1_PROGRAM_VKEY = 0x005120317542200324c9509e78315ad70799268f02d21504709c8973d2493203; // ToDo: set to actual SP1 program vKey
 
     constructor() {
         anchorBlock = blockhash(block.number - 1);
@@ -29,12 +30,12 @@ contract Rollup is IRollup {
                 SP1_PROGRAM_VKEY, // ToDo: set to actual SP1 program vKey
                 bytes.concat(
                     anchorBlock, // ethereum state commitment
-                    stateAddress(chainLength, 0).codehash, // parent state commitment
-                    stateAddress(chainLength, 1).codehash, // parent state commitment
+                    stateAddress(chainLength, 0).codehash, // parent account-state commitment
+                    stateAddress(chainLength, 1).codehash, // parent nonce-state commitment
                     INCIPIT,
-                    accountBlob, // proposed account state
+                    accountBlob, // proposed account-state
                     INCIPIT,
-                    nonceBlob // proposed nonce state
+                    nonceBlob // proposed nonce-state
                 ),
                 proof
             );
@@ -62,8 +63,8 @@ contract Rollup is IRollup {
     function state(uint256 at, uint256 io, uint256 tokenId) public view returns (bytes6) {
         address pointer = stateAddress(at, io);
         if (tokenId == 0) return bytes6(bytes.concat(INCIPIT, SSTORE2.read(pointer, 0, 5)));
-        uint256 index = (tokenId * 6) - 1;
-        return bytes6(SSTORE2.read(pointer, index, index + 6));
+        uint256 index = (tokenId * QUOTA) - 1;
+        return bytes6(SSTORE2.read(pointer, index, index + QUOTA));
     }
 
     function stateAddress(uint256 at, uint256 io) public view returns (address) {        
