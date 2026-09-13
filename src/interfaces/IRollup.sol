@@ -4,6 +4,12 @@ pragma solidity ^0.8.37;
 
 interface IRollup {
     error InvalidBlobs();
+    error OversizeBlobs();
+    
+    uint256 public constant QUOTA = 6; 
+    address public constant SP1_GROTH16_GATEWAY = 0x397A5f7f3dBd538f23DE225B51f532c34448dA9B;
+    bytes32 public constant SP1_PROGRAM_VKEY = 0x005120317542200324c9509e78315ad70799268f02d21504709c8973d2493203; // ToDo: set to actual SP1 program vKey
+
 
     event NewState(
         address indexed from,
