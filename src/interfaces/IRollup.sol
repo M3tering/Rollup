@@ -3,6 +3,8 @@
 pragma solidity ^0.8.28;
 
 interface IRollup {
+    error InvalidBlobs();
+
     event NewState(
         address indexed from,
         bytes32 indexed anchorBlock,

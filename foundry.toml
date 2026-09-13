@@ -3,11 +3,11 @@ src = "src"
 out = "out"
 optimizer = true
 optimizer-runs = 1000
-solc-version = "0.8.28"
+solc-version = "0.8.37"
 libs = ["dependencies"]
 
 remappings = [
-    "solady@0.1.7/=dependencies/solady-0.1.7/",
+    "solady@0.2.6/=dependencies/solady-0.2.6/",
 ]
 
 [soldeer]
@@ -15,8 +15,8 @@ remappings_generate = false
 remappings_location = "config"
 
 [dependencies]
-forge-std = "1.9.5"
-solady = "0.1.7"
+forge-std = "1.16.2"
+solady = "0.2.6"
 
 [fuzz]
 seed = "0x544D"
