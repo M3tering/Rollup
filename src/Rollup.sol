@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.37;
 
-import {LibRLP} from "solady@0.1.7/src/utils/LibRLP.sol";
-import {SSTORE2} from "solady@0.1.7/src/utils/SSTORE2.sol";
+import {LibRLP} from "solady@0.2.6/src/utils/LibRLP.sol";
+import {SSTORE2} from "solady@0.2.6/src/utils/SSTORE2.sol";
 
 import {ISP1Verifier} from "./interfaces/ISP1Verifier.sol";
 import {IRollup} from "./interfaces/IRollup.sol";
