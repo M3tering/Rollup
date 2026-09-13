@@ -1,14 +1,32 @@
 [profile.default]
 src = "src"
 out = "out"
-optimizer = true
-optimizer-runs = 1000
-solc-version = "0.8.37"
 libs = ["dependencies"]
-
+solc = "0.8.37"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 1000
+code_size_limit = 24576
 remappings = [
-    "solady@0.2.6/=dependencies/solady-0.2.6/",
+    "solady@0.1.26/=dependencies/solady-0.1.26/",
+    "forge-std/=dependencies/forge-std-1.16.2/src/",
 ]
+
+[profile.default.fuzz]
+runs = 256
+
+[profile.default.invariant]
+runs = 64
+depth = 32
+fail_on_revert = true
+
+[profile.ci.fuzz]
+runs = 1024
+
+[profile.ci.invariant]
+runs = 256
+depth = 64
+fail_on_revert = true
 
 [soldeer]
 remappings_generate = false
@@ -16,12 +34,4 @@ remappings_location = "config"
 
 [dependencies]
 forge-std = "1.16.2"
-solady = "0.2.6"
-
-[fuzz]
-seed = "0x544D"
-
-[invariant]
-runs = 256
-
-# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
+solady = "0.1.26"

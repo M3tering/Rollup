@@ -1,21 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.37;
 
-import {LibRLP} from "solady@0.2.6/src/utils/LibRLP.sol";
-import {SSTORE2} from "solady@0.2.6/src/utils/SSTORE2.sol";
+import {LibRLP} from "solady@0.1.26/src/utils/LibRLP.sol";
+import {SSTORE2} from "solady@0.1.26/src/utils/SSTORE2.sol";
 
 import {ISP1Verifier} from "./interfaces/ISP1Verifier.sol";
 import {IRollup} from "./interfaces/IRollup.sol";
 
 /// @custom:security-contact info@whynotswitch.com
 contract Rollup is IRollup {
+    uint256 public constant QUOTA = 6;
+    address public constant SP1_GROTH16_GATEWAY = 0x397A5f7f3dBd538f23DE225B51f532c34448dA9B;
+    // TODO: replace with the verified production SP1 program key before deployment.
+    bytes32 public constant SP1_PROGRAM_VKEY = 0x005120317542200324c9509e78315ad70799268f02d21504709c8973d2493203;
+
     bytes32 public anchorBlock;
     uint256 public chainLength;
     bytes constant INCIPIT = hex"00";
 
     constructor() {
-        SSTORE2.write(INCIPIT);  //this contract nonce = 2x chainLength +1
-        SSTORE2.write(INCIPIT);  //this contract nonce = 2x chainLength +2
+        SSTORE2.write(INCIPIT); // Genesis account: CREATE nonce 1.
+        SSTORE2.write(INCIPIT); // Genesis nonce: CREATE nonce 2.
         emit NewState(msg.sender, hex"", 0, INCIPIT, INCIPIT, INCIPIT);
         anchorBlock = blockhash(block.number - 1);
     }
@@ -39,14 +44,14 @@ contract Rollup is IRollup {
                 proof
             );
 
-        // Keep this order: exactly two CREATEs per committed state, account first.
-        SSTORE2.write(accountBlob);  // this contract nonce = 2x chainLength +1 
-        SSTORE2.write(nonceBlob);  // this contract nonce = 2x chainLength +2
-
         chainLength++;
-        emit NewState(msg.sender, anchorBlock, chainLength, accountBlob, nonceBlob, proof);
-        anchorBlock = blockhash(block.number - 1);
 
+        // Keep this order: exactly two CREATEs per committed state, account first.
+        SSTORE2.write(accountBlob); // CREATE nonce = 2 * chainLength + 1.
+        SSTORE2.write(nonceBlob); // CREATE nonce = 2 * chainLength + 2.
+        emit NewState(msg.sender, anchorBlock, chainLength, accountBlob, nonceBlob, proof);
+
+        anchorBlock = blockhash(block.number - 1);
     }
 
     function account(uint256 tokenId) external view returns (bytes6) {
@@ -61,14 +66,14 @@ contract Rollup is IRollup {
         return stateAddress(chainLength, io);
     }
 
-    function state(uint256 at, uint256 io, uint256 tokenId) public view returns (bytes6) {
-        address pointer = stateAddress(at, io);
-        if (tokenId == 0) return bytes6(bytes.concat(INCIPIT, SSTORE2.read(pointer, 0, QUOTA-1)));
+    function state(uint256 stateIndex, uint256 io, uint256 tokenId) public view returns (bytes6) {
+        address pointer = stateAddress(stateIndex, io);
+        if (tokenId == 0) return bytes6(bytes.concat(INCIPIT, SSTORE2.read(pointer, 0, QUOTA - 1)));
         uint256 index = (tokenId * QUOTA) - 1;
         return bytes6(SSTORE2.read(pointer, index, index + QUOTA));
     }
 
-    function stateAddress(uint256 at, uint256 io) public view returns (address) {        
-        return LibRLP.computeAddress(address(this), at * 2 + 1 + (io == 0 ? 0: 1));
+    function stateAddress(uint256 stateIndex, uint256 io) public view returns (address) {
+        return LibRLP.computeAddress(address(this), stateIndex * 2 + 1 + (io == 0 ? 0 : 1));
     }
 }

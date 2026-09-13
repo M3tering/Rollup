@@ -5,41 +5,36 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
   FOUNDRY_PROFILE: ci
 
 jobs:
   check:
-    strategy:
-      fail-fast: true
-
-    name: Foundry project
+    name: Build, behavior, and stateful invariants
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
-        with:
-          submodules: recursive
 
-      - name: Install Foundry
+      - name: Install pinned Foundry
         uses: foundry-rs/foundry-toolchain@v1.9.1
+        with:
+          version: v1.8.1
 
-      - name: Show Forge version
+      - name: Install locked dependencies
         run: |
           forge --version
-
-      - name: Install dependencies
-        run: |
           forge soldeer install
+          git diff --exit-code -- foundry.toml soldeer.lock
 
-      - name: Run Forge build
-        run: |
-          forge build --sizes
-        id: build
+      - name: Check formatting
+        run: forge fmt --check
 
-      - name: Run Forge tests
-        run: |
-          forge test -vvv --gas-report
-        id: test
-      
-      - name: Run snapshot
-        run: forge snapshot
+      - name: Build and check production size
+        run: forge build --sizes
+
+      - name: Run behavioral, fuzz, and invariant tests
+        run: forge test -vvv --gas-report
