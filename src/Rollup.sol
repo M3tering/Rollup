@@ -11,15 +11,15 @@ import {IRollup} from "./interfaces/IRollup.sol";
 contract Rollup is IRollup {
     bytes32 public anchorBlock;
     uint256 public chainLength;
-    bytes constant incipit = hex"00";
+    bytes constant INCIPIT = hex"00";
     address constant SP1_GROTH16_GATEWAY = 0x397A5f7f3dBd538f23DE225B51f532c34448dA9B;
     bytes32 constant SP1_PROGRAM_VKEY = 0x005120317542200324c9509e78315ad70799268f02d21504709c8973d2493203; // ToDo: set to actual SP1 program vKey
 
     constructor() {
         anchorBlock = blockhash(block.number - 1);
-        SSTORE2.write(incipit);  //this contract nonce = 2x chainLength +1
-        SSTORE2.write(incipit);  //this contract nonce = 2x chainLength +2
-        emit NewState(msg.sender, hex"", 0, incipit, incipit, incipit);
+        SSTORE2.write(INCIPIT);  //this contract nonce = 2x chainLength +1
+        SSTORE2.write(INCIPIT);  //this contract nonce = 2x chainLength +2
+        emit NewState(msg.sender, hex"", 0, INCIPIT, INCIPIT, INCIPIT);
     }
 
     function commitState(bytes calldata accountBlob, bytes calldata nonceBlob, bytes calldata proof) external {
@@ -31,9 +31,9 @@ contract Rollup is IRollup {
                     anchorBlock, // ethereum state commitment
                     stateAddress(chainLength, 0).codehash, // parent state commitment
                     stateAddress(chainLength, 1).codehash, // parent state commitment
-                    incipit,
+                    INCIPIT,
                     accountBlob, // proposed account state
-                    incipit,
+                    INCIPIT,
                     nonceBlob // proposed nonce state
                 ),
                 proof
@@ -61,7 +61,7 @@ contract Rollup is IRollup {
 
     function state(uint256 at, uint256 io, uint256 tokenId) public view returns (bytes6) {
         address pointer = stateAddress(at, io);
-        if (tokenId == 0) return bytes6(bytes.concat(incipit, SSTORE2.read(pointer, 0, 5)));
+        if (tokenId == 0) return bytes6(bytes.concat(INCIPIT, SSTORE2.read(pointer, 0, 5)));
         uint256 index = (tokenId * 6) - 1;
         return bytes6(SSTORE2.read(pointer, index, index + 6));
     }
