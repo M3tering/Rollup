@@ -20,5 +20,4 @@ interface IRollup {
     function publicKey(uint64 id) external view returns (bytes32);
     function account(uint64 id) external view returns (uint40);
     function nonce(uint64 id) external view returns (uint24);
-    function state(uint64 id, uint256 io) external view returns (uint40);
 }

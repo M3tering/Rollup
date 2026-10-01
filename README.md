@@ -64,7 +64,6 @@ After success, `StateCommitted(bytes updates)` emits the exact update payload. I
 | `publicKey(id)` | Full stored key; zero if absent/revoked |
 | `account(id)` | uint40 Wh account; zero for absent state |
 | `nonce(id)` | uint24 nonce; zero for absent state |
-| `state(id, io)` | Account when io=0, nonce for every nonzero io |
 
 Storage slot 0 holds the word-array length; slot 1 is the key mapping base. Word `slot` lives at `keccak256(bytes32(0)) + slot`. Changing this layout or wire format requires a coordinated prover release.
 

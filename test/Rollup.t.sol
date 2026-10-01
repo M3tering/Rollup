@@ -178,14 +178,13 @@ contract RollupTest is Test {
         assertEq(abi.decode(logs[0].data, (bytes)), updates);
     }
 
-    function testFuzzPacking(uint40 accountValue, uint24 nonceValue, uint8 rawLane, uint256 io) public {
+    function testFuzzPacking(uint40 accountValue, uint24 nonceValue, uint8 rawLane) public {
         uint64 lane = rawLane % 4;
         uint256 pair = uint256(accountValue) | (uint256(nonceValue) << 40);
         vm.assume(pair != 0);
         commit(0, pair << (64 * lane));
         assertEq(r.account(lane), accountValue);
         assertEq(r.nonce(lane), nonceValue);
-        assertEq(r.state(lane, io), io == 0 ? accountValue : nonceValue);
         assertEq(r.account((lane + 1) % 4), 0);
     }
 

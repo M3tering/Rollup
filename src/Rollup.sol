@@ -79,11 +79,6 @@ contract Rollup is IRollup {
         return uint24(_pair(id) >> 40);
     }
 
-    function state(uint64 id, uint256 io) external view returns (uint40) {
-        uint256 pair = _pair(id);
-        return io == 0 ? uint40(pair) : uint40(uint24(pair >> 40));
-    }
-
     function _pair(uint64 id) private view returns (uint256) {
         uint256 slot = id / 4;
         return slot < words.length ? words[slot] >> (64 * (id % 4)) : 0;
