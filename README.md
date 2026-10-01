@@ -1,145 +1,120 @@
-# M3tering Rollup
+# M3tering Rollup 🐻‍❄️
 
-This repository contains the Ethereum settlement and runtime-readable state contract for the M3tering metering protocol. `Rollup` accepts SP1-proven state transitions, stores account and nonce snapshots in immutable contract code, and exposes current and historical six-byte records to other contracts.
+Rollup stores proven meter accounts, nonces and public keys on Ethereum. Contracts can read the current state directly. The companion [prover](https://github.com/M3tering/Prover) validates signed meter actions with SP1 and submits sparse replacements for changed storage words.
 
-The Solidity contract authenticates the transition through an SP1 verifier gateway. Meter-action rules, signature verification, and proofs of public keys held in an Ethereum keystore belong to the corresponding SP1 program; they are not independently implemented by this contract.
+## State and units
 
-**Deployment status:** `SP1_PROGRAM_VKEY` is marked TODO in source. Confirm the exact production program key, gateway deployment, public-value encoding, and a real end-to-end proof before deploying. The test verifier in this repository checks the contract/verifier boundary; it does not verify cryptographic proofs.
+`words` is a public dynamic array of uint256 values. Four meters share each word. Meter `id` uses slot `id / 4` and lane `id % 4`; the lane starts at bit `64 * (id % 4)`.
 
-## Repository layout
+| Lane field | Bits | Meaning |
+|---|---:|---|
+| Account, low bits | 40 | Cumulative watt-hours |
+| Nonce, high bits | 24 | Last accepted action nonce |
 
-| Path | Purpose |
-| --- | --- |
-| `src/Rollup.sol` | State transition verification, snapshot creation, record getters |
-| `src/interfaces/IRollup.sol` | Public contract ABI, errors, and event |
-| `src/interfaces/ISP1Verifier.sol` | SP1 verifier gateway interface |
-| `test/Rollup.t.sol` | Behavioral, negative-path, boundary, and fuzz tests |
-| `test/Rollup.invariant.t.sol` | Randomized transition sequences checked against an independent history model |
-| `foundry.toml`, `soldeer.lock` | Compiler, EVM target, dependency pins, and test configuration |
-| `.github/workflows/test.yml` | Reproducible dependency install, formatting, build, and tests |
+The account limit is 1,099,511,627,775 Wh and the nonce limit is 16,777,215. Slot IDs are uint32: 4,294,967,296 slots support IDs 0–17,179,869,183. Sparse array growth does not write zero-filled gaps.
 
-## State lifecycle
+Signed messages are eight bytes: uint32 big-endian nonce followed by uint32 big-endian **milliwatt-hours**. The prover verifies the exact signed bytes, processes consecutive nonces and aggregates accepted mWh per meter. Each commit adds `floor(total_mWh / 1000)` Wh. Fractional Wh are discarded at each commit. A nonce advances even when the Wh increment is zero. Bounds fail instead of wrapping.
 
-Deployment creates two genesis snapshots, account first and nonce second. Each payload is `0x00`; each snapshot's deployed runtime code is consequently `0x0000`, because SSTORE2 adds a leading STOP byte. `chainLength` starts at zero, identifying genesis. It counts successful subsequent commits, so there are always `chainLength + 1` historical snapshot pairs.
+Every full 32-byte public key stays in `publicKey(id)`. Only the current `M3ter.ownerOf(id)` may set or revoke it; zero revokes. An NFT transfer does not automatically rotate its key. There is no administrator bypass or nonce reset.
 
-For `commitState(accountBlob, nonceBlob, proof)`:
+## Updates and proof statement
 
-1. Both payloads must have equal length. Each must contain at most 24,575 bytes.
-2. The contract builds public values from the stored anchor, current snapshot code hashes, and proposed snapshot runtime bytes, then calls the configured verifier.
-3. If verification succeeds, it deploys the account snapshot and then the nonce snapshot using `SSTORE2.write`.
-4. It increments `chainLength` and emits `NewState` containing the anchor used to verify this transition.
-5. It sets `anchorBlock` to `blockhash(block.number - 1)` for the next proof.
+`commitState(bytes updates, bytes proof)` takes concatenated **36-byte records**, sorted by strictly increasing slot:
 
-Anyone may submit a valid proof. A verifier rejection or deployment failure reverts the entire call, including both CREATE nonce effects, stored fields, and logs. There are no owner-only transition controls or upgrade functions in this contract.
-
-## Anchoring the EVM state
-
-`anchorBlock` is an Ethereum **block hash**, not a state root. The SP1 program must authenticate the block header against this hash, derive its state root, and validate keystore account/storage proofs against that root before accepting meter signatures.
-
-The constructor sets the first anchor to its parent block. Each successful commit verifies against the previously stored anchor and selects its own parent block as the next anchor. This fixes the external-state snapshot before the next proof is generated.
-
-For example, deployment in block 100 selects block 99. A commit in block 110 proves against block 99, then selects block 109 for the following proof. A key rotation in block 105 is not visible to that first commit. This contract provides a previously selected snapshot, not validation against the latest state at transaction execution time.
-
-Several commits in one block can select the same next anchor. A long idle period does not expire a stored anchor hash after 256 blocks: the hash is already in storage. The prover still needs historical header/state witnesses, which may require an archive-capable data provider. If signature revocation must take effect sooner, a different freshness policy is needed in both the contract and proving protocol.
-
-## Proof public values
-
-The exact encoding is raw byte concatenation, **not** `abi.encode`:
-
-```text
-anchorBlock                     32 bytes
-keccak256(previous account code) 32 bytes
-keccak256(previous nonce code)   32 bytes
-0x00 || accountBlob             1 + L bytes
-0x00 || nonceBlob               1 + L bytes
+```
+uint32 slot, big endian       4 bytes
+uint256 new word, big endian 32 bytes
 ```
 
-The total length is `98 + 2*L`. Previous code hashes include the SSTORE2 STOP byte. The caller supplies payloads without that byte; the contract adds it to the statement and SSTORE2 adds it when deploying code.
+There are no modes, deltas, block anchors or global sequence counters. Empty/malformed data, duplicate/descending slots and non-increasing words revert. The guest enforces signatures, per-lane bounds, consecutive nonces and preservation of untouched lanes.
 
-The equal-length rule makes the final two fields unambiguous: after the first 96 bytes, split the remainder exactly in half and require both leading bytes to be zero. The prover and submission client must use this same framing. The zkVM must enforce it: unequal prover outputs can otherwise encode the same bytes as a different equal-length Solidity pair. If they trim trailing zero records independently, pad both outputs to a shared length **before producing the proof**. Padding after proving changes the public values and invalidates that proof.
+Public values are exactly `keccak256(transcript)` as 32 bytes. The transcript has a 52-byte prefix and 100 bytes per changed word:
 
-The contract does not separately enforce record alignment, monotonic meter nonces, balance arithmetic, or signature authorization. The pinned SP1 program must enforce the intended semantic rules. Empty payloads and partial trailing records pass the Solidity shape checks if a proof is accepted.
+| Field | Bytes | Purpose |
+|---|---:|---|
+| Chain ID | 32 | Bind the destination chain |
+| Rollup address | 20 | Bind the destination contract |
+| Slot, repeated | 4 | Bind the meter positions |
+| Old word, repeated | 32 | Authenticate starting state and reject stale proofs |
+| New word, repeated | 32 | Authenticate the replacement |
+| Used-key hash, repeated | 32 | Authenticate the signing keys |
 
-The current statement does not include the Rollup address, chain ID, or `chainLength`. Changed parent hashes or an updated anchor invalidate an old statement. However, a no-op proof can be reused when the anchor and both parent hashes remain unchanged. Identical deployments may also share statements. Applications needing unique transitions or deployment-specific proofs should add explicit domain/sequence binding in a coordinated protocol change.
+The used-key hash is keccak256 of four 32-byte entries: the stored key when that lane changes, zero otherwise. Old words and keys come from contract storage, not calldata. The fixed guest key identifies the accepted protocol. Record count is implicit in the fixed-length encoding. No MPT proofs, headers or historical state authentication are required.
 
-## Snapshot addresses
+A proof remains valid while its old words and used keys match. Disjoint-slot batches can coexist; batches sharing a slot conflict. A successful transition cannot replay against its new state. Rotating a used key invalidates a pending proof; rotating an unrelated lane's key does not. There is no time expiry or key-epoch history. Rotating back can restore a still-current proof's validity.
 
-Snapshots use direct CREATE; no CREATE3 helper proxy or stored pointer mapping is needed. A newly created contract begins with CREATE nonce 1. Genesis consumes nonces 1 and 2; each later transition consumes exactly two more.
+Batch destination binding does not change the eight-byte meter signature format. Reusing keys/nonces across deployments can permit the same signatures to be used to construct a different batch proof.
 
-For historical state index `s`:
+## Commit execution and events
 
-```text
-account CREATE nonce = 2*s + 1
-nonce   CREATE nonce = 2*s + 2
-address = last20bytes(keccak256(RLP([address(rollup), CREATE nonce])))
-```
+One loop decodes each record, reads old state and used keys, constructs its transcript record and writes the replacement word. Temporary memory is reused for key hashing. Array length grows once after the loop, if needed. The verifier is called through a `view` interface, so verification uses STATICCALL. Failure reverts every provisional write and the length change. A missing verifier fails closed.
 
-`stateAddress(s, io)` implements this calculation using Solady `LibRLP`. `io == 0` selects account state; **every nonzero value** selects nonce state. After genesis and every successful commit, the Rollup account's actual nonce is `2*chainLength + 3`.
+The verifier can read provisional new state but cannot mutate state through its static call. It must verify the supplied guest key, public values and proof rather than depend on getters exposing old values.
 
-This calculation depends on exactly two ordered CREATEs per successful transition and the two constructor CREATEs. Adding any other CREATE/CREATE2 in the Rollup execution context, switching to a proxy without equivalent initialization, or skipping a snapshot requires redesigning the address scheme. Failed transactions do not consume the sequence. Sending ETH to a future snapshot address alone does not prevent its creation.
+After success, `StateCommitted(bytes updates)` emits the exact update payload. Indexers split it into 36-byte records and overwrite their corresponding words. Transaction/log order provides ordering; reorgs require rolling back indexed events. Logs do not provide historical EVM-accessible state.
 
-## Reading six-byte records
+## Contract interface
 
-Records are indexed over the **deployed runtime** `0x00 || payload`. Record `tokenId` consists of runtime bytes `[6*tokenId, 6*tokenId + 6)`, padded on the right with zeros when a deployed snapshot is shorter.
+| Function | Behavior |
+|---|---|
+| `commitState(updates, proof)` | Verify and apply sparse replacements |
+| `setPublicKey(id, key)` | Owner-authorized key registration, rotation or revocation |
+| `words(slot)` | Generated array getter; reverts outside the current length |
+| `wordCount()` | Current array length |
+| `publicKey(id)` | Full stored key; zero if absent/revoked |
+| `account(id)` | uint40 Wh account; zero for absent state |
+| `nonce(id)` | uint24 nonce; zero for absent state |
 
-| Record | Payload bytes used | Result |
-| --- | --- | --- |
-| Token 0 | First five bytes | Leading `0x00` followed by five payload bytes |
-| Token 1 | Bytes 5 through 10 | Six payload bytes |
-| Token 2 | Bytes 11 through 16 | Six payload bytes |
+Storage slot 0 holds the word-array length; slot 1 is the key mapping base. Word `slot` lives at `keccak256(bytes32(0)) + slot`. Changing this layout or wire format requires a coordinated prover release.
 
-SSTORE2's read functions omit its STOP byte. The getter therefore adds that byte back for token zero and uses payload offset `6*tokenId - 1` for subsequent tokens. Token zero has 40 usable bits; the others have 48. `bytes6` preserves byte order; use `uint48(value)` for the corresponding unsigned big-endian integer.
+`src/Rollup.sol` contains the implementation. `src/interfaces/IRollup.sol` declares the API, errors/events and M3ter owner interface. Functions are ordered external, public, internal, private; state-changing functions precede view functions, which precede pure functions within each visibility group. Generated public getters are declared with their storage variables.
 
-At the 24,575-byte payload limit, runtime code is 24,576 bytes and contains 4,096 records, indexed 0 through 4,095. Each account/nonce snapshot has this capacity independently. Reads beyond a deployed snapshot return zero for ordinary token IDs. Extreme indexes can revert on checked arithmetic overflow. Reading an undeployed future snapshot fails in SSTORE2; address prediction itself does not assert that a snapshot exists. An all-zero record is not an explicit existence flag.
+## Build and deployment
 
-```solidity
-IRollup rollup = IRollup(rollupAddress);
-uint48 currentAccount = uint48(rollup.account(tokenId));
-uint48 currentNonce = uint48(rollup.nonce(tokenId));
-bytes6 historicalAccount = rollup.state(stateIndex, 0, tokenId);
-address currentNonceSnapshot = rollup.latestStateAddress(1);
-```
-
-## Events
-
-```solidity
-event NewState(
-    address indexed from,
-    bytes32 indexed anchorBlock,
-    uint256 indexed chainLength,
-    bytes accountBlob,
-    bytes nonceBlob,
-    bytes proof
-);
-```
-
-For ordinary commits, `from` is the submitter, `chainLength` is the newly created index, and the event anchor is the one verified by that commit. The stored anchor after the transaction is for the next proof.
-
-Genesis intentionally uses a sentinel event: anchor `bytes32(0)`, index zero, both payloads `0x00`, and proof `0x00`. No genesis proof is verified. The stored anchor is nevertheless the constructor's parent-block hash. Indexers must handle index zero explicitly rather than interpreting its proof/anchor as a verified transition.
-
-## Build and test
-
-The project uses Foundry v1.8.1, Solidity 0.8.37, Solady 0.1.26, and forge-std 1.16.2. Soldeer installs dependencies into `dependencies/`; the legacy `lib/forge-std` submodule is not used by this configuration.
+Install Foundry 1.8.1, then:
 
 ```sh
-foundryup --install v1.8.1
 forge soldeer install
 forge fmt --check
 forge build --sizes
-forge test -vv
-FOUNDRY_PROFILE=ci forge test -vvv --gas-report
+FOUNDRY_PROFILE=ci forge test -vvv
 ```
 
-Commit `foundry.toml` and `soldeer.lock` together. Use `forge soldeer update` deliberately when changing versions; ordinary setup and CI use `install`. CI rejects lockfile/config changes caused by installation.
+The compiler is Solidity 0.8.37 with Cancun-compatible bytecode. Forge-std 1.16.2 is locked by Soldeer. The contract no longer needs Solady.
 
-The EVM code-generation/test target is pinned to Cancun, and the contract-size limit is explicitly 24,576 bytes. This gives a reproducible baseline; it does not simulate proposed Glamsterdam gas schedules. Test gas reports include the test verifier and test machinery and must not be presented as production proof-verification or transaction costs.
+Before deployment, set the three TODO constants in `Rollup.sol`: `VERIFIER`, `SP1_PROGRAM_VKEY` and `M3ter`. Derive the program key from the final companion program ELF and validate a real proof with the selected verifier. The checked-in placeholders are not deployment addresses/keys. There is no constructor. Deploying this storage layout starts empty; importing an existing deployment's state/keys requires a separately specified migration.
 
-The default profile runs each fuzz test 256 times and each invariant for 64 sequences of depth 32. CI uses 1,024 fuzz cases and 256 sequences of depth 64, with unexpected handler reverts treated as failures. Foundry prints failing inputs and retains counterexamples for diagnosis.
+## Gas and batch size
 
-## What the tests establish
+A K-slot payload uses `36*K` bytes before the ABI envelope and proof. At 512 slots this is 18,432 bytes, 512 bytes more than three-byte slot IDs. For slots below 2^24 the additional index byte is zero, adding 4 intrinsic calldata gas per slot and approximately 8 log-data gas per slot, plus modest transcript/memory overhead. Higher slot IDs can add 16 rather than 4 calldata gas for that byte.
 
-The tests check genesis/event conventions, accepted transitions from arbitrary submitters, exact proof-statement binding, invalid input/proof rollback, maximum and empty payloads, record decoding, all-nonzero `io` normalization, historical immutability, address calculation across RLP nonce boundaries, and recovery after a failed second creation. They also characterize no-op replay and old-anchor acceptance.
+Actual local Anvil Osaka receipts, cold storage, four changed meters per word, mock verifier and 32-byte mock proof:
 
-Stateful tests maintain separate account/nonce histories and the expected anchor. After randomized valid and invalid submissions, they compare all historical snapshot code and record values against that model, together with `chainLength`, latest getters, and the actual CREATE nonce. Stateful submissions alternate between two EOA actors; unit tests also submit from a contract. The verifier double only accepts the statement prepared by the model.
+| Slots | Reused words | Fresh words |
+|---:|---:|---:|
+| 128 | 1,943,587 | 4,152,398 |
+| 512 | 7,690,146 | 16,465,357 |
 
-These checks do not establish the correctness of the SP1 program or gateway. Add a fixture using a real production program/proof, authenticated keystore state at a known anchor, and the exact deployment environment before treating this repository as an end-to-end protocol test. See [TESTING.md](TESTING.md) for the integration cases and maintenance policy.
+The 512-slot increase over three-byte IDs was 6,682 gas (about 13.05 per slot). Binary searches at a 16,777,216 gas cap found these boundaries; the next slot was sent and failed with out-of-gas:
+
+| Fixture | Three-byte IDs | Four-byte IDs |
+|---|---:|---:|
+| Reused, ordinary values | 1,118 | 1,117 |
+| Fresh, ordinary values | 521 | 521 |
+| Reused, all-nonzero new words | 1,101 | 1,100 |
+| Fresh, all-nonzero new words | 518 | 517 |
+
+These are mock-verifier ceilings, not production limits. Real proof verification, proof calldata, sparse IDs and chain rules affect capacity. The prover's conservative defaults remain **647 reused / 322 fresh** words under current pricing, or **454 reused / 90 fresh** under the specified Glamsterdam model, with both budgets at 15m, 1.5m fixed allowance, 12,000 per-word overhead and 20% headroom. The extra byte remains inside that overhead allowance. Mixed batches are priced using their actual old words.
+
+The forecast uses [EIP-8037](https://eips.ethereum.org/EIPS/eip-8037) and [EIP-8038](https://eips.ethereum.org/EIPS/eip-8038); it is not a measurement on a finalized fork client. Recalibrate against the deployed verifier and target chain before changing allowances. The [transaction cap](https://eips.ethereum.org/EIPS/eip-7825) and any separate state-gas budget must both be respected.
+
+Reproduce local receipts after `forge build`:
+
+```sh
+anvil --hardfork osaka --gas-limit 100000000 --port 18548 --silent
+# In another terminal, from this repository:
+python3 scripts/benchmark.py
+WORST_WORD=1 python3 scripts/benchmark.py
+```
+
+The script resets only its hard-coded localhost node. JSON results are under `benchmarks/`. Tests cover authority, full-key persistence, rollback, static verification, replay/stale proofs, destination binding, framing, four-byte/max-slot boundaries, exact event bytes, Rust statement equality and stateful accounting. Mocks test the contract/prover interface; a real production proof remains part of deployment validation.
