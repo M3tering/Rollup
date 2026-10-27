@@ -82,7 +82,11 @@ FOUNDRY_PROFILE=ci forge test -vvv
 
 The compiler is Solidity 0.8.37 with Cancun-compatible bytecode. Forge-std 1.16.2 is locked by Soldeer. The contract no longer needs Solady.
 
-Before deployment, set the three TODO constants in `Rollup.sol`: `VERIFIER`, `SP1_PROGRAM_VKEY` and `M3ter`. Derive the program key from the final companion program ELF and validate a real proof with the selected verifier. The checked-in placeholders are not deployment addresses/keys. There is no constructor. Deploying this storage layout starts empty; importing an existing deployment's state/keys requires a separately specified migration.
+The Sepolia deployment is `0xAb683B638f634F0a56e83acAcB81D17900606A79`; its transaction, program key, ELF checksum and meter 7 key registration are recorded in `deployments/sepolia.json`. It starts with zero accounts/nonces. Register keys through each meter's NFT owner and begin signed actions at nonce 1.
+
+`VERIFIER` is `0x397A5f7f3dBd538f23DE225B51f532c34448dA9B`, and `M3ter` is `0x2c0008b6ea87802fc729A8f34B534F9D90d7Ac53`. `SP1_PROGRAM_VKEY` is storage-backed for testing. Only `VKEY_ADMIN` (the deploying wallet) can call `setProgramVKey(bytes32)`, only on chain ID 11155111, and zero keys are rejected. Every change emits `ProgramVKeyChanged`. This testing authority can change the transition rules, so it is a trust assumption, not a production upgrade mechanism. For a mainnet release, use a fixed, validated guest key and remove the test-only administration code. The setter is already disabled on other chains.
+
+Derive the program key from the exact companion guest ELF. The key/admin fields follow `words` and `publicKey`, preserving their storage slots 0 and 1. No historical state or old queue is imported into the fresh deployment.
 
 ## Gas and batch size
 

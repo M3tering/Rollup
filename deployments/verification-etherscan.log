@@ -1,0 +1,27 @@
+Start verifying contract `0xAb683B638f634F0a56e83acAcB81D17900606A79` deployed on sepolia
+Compiler version: 0.8.37+commit.f401782d
+
+Verifying on etherscan...
+Submitting verification for [src/Rollup.sol:Rollup] 0xAb683B638f634F0a56e83acAcB81D17900606A79.
+Submitted contract for verification:
+	Response: `OK`
+	GUID: `h7ff5qxndvehfmzcjrjufzymn2sc4y7rhykjkhpcz5iy34cyw5`
+	URL: https://sepolia.etherscan.io/address/0xab683b638f634f0a56e83acacb81d17900606a79
+h7ff5qxndvehfmzcjrjufzymn2sc4y7rhykjkhpcz5iy34cyw5	https://sepolia.etherscan.io/address/0xab683b638f634f0a56e83acacb81d17900606a79
+
+Verifying on sourcify...
+Submitting verification for [Rollup] 0xAb683B638f634F0a56e83acAcB81D17900606A79.
+Submitted contract for verification:
+	Verification Job ID: `9c41b543-3070-4afe-be12-cbc9cf1b6ed4`
+	URL: https://sourcify.dev/server/verify-ui/jobs/9c41b543-3070-4afe-be12-cbc9cf1b6ed4
+9c41b543-3070-4afe-be12-cbc9cf1b6ed4	https://sourcify.dev/server/verify-ui/jobs/9c41b543-3070-4afe-be12-cbc9cf1b6ed4
+
+Waiting for etherscan verification result...
+Contract verification status:
+Response: `NOTOK`
+Details: `Pending in queue`
+Warning: Verification is still pending...; waiting 5 seconds before trying again (4 tries remaining)
+Contract verification status:
+Response: `OK`
+Details: `Pass - Verified`
+Contract successfully verified

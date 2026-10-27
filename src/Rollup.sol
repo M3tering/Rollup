@@ -7,12 +7,11 @@ import {ISP1Verifier} from "./interfaces/ISP1Verifier.sol";
 contract Rollup is IRollup {
     uint256[] public words;
     mapping(uint64 => bytes32) public publicKey;
-    // TODO: replace with the target chain's audited SP1 verifier before deployment.
-    ISP1Verifier public constant VERIFIER = ISP1Verifier(address(0x1111));
-    // TODO: derive from the final prover program ELF; this placeholder is not a valid deployment key.
-    bytes32 public constant SP1_PROGRAM_VKEY = bytes32(uint256(1));
-    // TODO: replace with the M3ter NFT deployment on the target chain.
-    address public constant M3ter = address(0x2222);
+    ISP1Verifier public constant VERIFIER = ISP1Verifier(0x397A5f7f3dBd538f23DE225B51f532c34448dA9B);
+    // Sepolia testing only. Rebuild/re-derive this key when changing the guest.
+    bytes32 public SP1_PROGRAM_VKEY = 0x00d7ccad99253ce7ee8b85917c04d23c3685645613492931c9ad82efecefe06d;
+    address public immutable VKEY_ADMIN = msg.sender;
+    address public constant M3ter = 0x2c0008b6ea87802fc729A8f34B534F9D90d7Ac53;
     uint256 public constant MAX_SLOT = type(uint32).max;
 
     /// @dev Records: uint32 slot (BE), uint256 new value (BE), strictly ascending.
@@ -65,6 +64,15 @@ contract Rollup is IRollup {
         if (IM3ter(M3ter).ownerOf(id) != msg.sender) revert Unauthorized();
         publicKey[id] = key;
         emit KeyChanged(id, key);
+    }
+
+    /// @notice Test-only authority; disabled on every chain except Ethereum Sepolia.
+    function setProgramVKey(bytes32 newVKey) external {
+        if (block.chainid != 11155111 || msg.sender != VKEY_ADMIN) revert Unauthorized();
+        if (newVKey == bytes32(0)) revert InvalidUpdate();
+        bytes32 previousVKey = SP1_PROGRAM_VKEY;
+        SP1_PROGRAM_VKEY = newVKey;
+        emit ProgramVKeyChanged(previousVKey, newVKey);
     }
 
     function wordCount() external view returns (uint256) {

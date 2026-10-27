@@ -40,6 +40,25 @@ contract RollupTest is Test {
         TestM3ter(r.M3ter()).setOwner(address(this));
     }
 
+    function testVKeyUpdatesOnlyByDeployerOnSepolia() public {
+        bytes32 beforeKey = r.SP1_PROGRAM_VKEY();
+        vm.chainId(1);
+        vm.expectRevert(IRollup.Unauthorized.selector);
+        r.setProgramVKey(bytes32(uint256(2)));
+        vm.chainId(11155111);
+        vm.prank(address(0xBAD));
+        vm.expectRevert(IRollup.Unauthorized.selector);
+        r.setProgramVKey(bytes32(uint256(2)));
+        vm.expectRevert(IRollup.InvalidUpdate.selector);
+        r.setProgramVKey(bytes32(0));
+        assertEq(r.SP1_PROGRAM_VKEY(), beforeKey);
+        vm.expectEmit(address(r));
+        emit IRollup.ProgramVKeyChanged(beforeKey, bytes32(uint256(2)));
+        r.setProgramVKey(bytes32(uint256(2)));
+        assertEq(r.SP1_PROGRAM_VKEY(), bytes32(uint256(2)));
+        assertEq(r.VKEY_ADMIN(), address(this));
+    }
+
     function oldWord(uint256 slot) internal view returns (uint256) {
         return slot < r.wordCount() ? r.words(slot) : 0;
     }
