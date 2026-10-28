@@ -17,6 +17,8 @@ Signed messages are eight bytes: uint32 big-endian nonce followed by uint32 big-
 
 Every full 32-byte public key stays in `publicKey(id)`. Only the current `M3ter.ownerOf(id)` may set or revoke it; zero revokes. An NFT transfer does not automatically rotate its key. There is no administrator bypass or nonce reset.
 
+`m3terId(key)` returns the meter currently registered with a nonzero key. Keys are unique across meters: attempting to register a key already assigned to another meter reverts with `KeyAlreadyRegistered`. Setting the same key again for its existing meter is allowed. Rotation and revocation remove the previous reverse entry, making that key available for registration again. Unknown, revoked and zero keys revert with `KeyNotFound`, so a valid result of zero always means meter 0. Registration authenticates the NFT owner; it does not prove possession of the signing key.
+
 ## Updates and proof statement
 
 `commitState(bytes updates, bytes proof)` takes concatenated **36-byte records**, sorted by strictly increasing slot:
@@ -62,10 +64,13 @@ After success, `StateCommitted(bytes updates)` emits the exact update payload. I
 | `words(slot)` | Generated array getter; reverts outside the current length |
 | `wordCount()` | Current array length |
 | `publicKey(id)` | Full stored key; zero if absent/revoked |
+| `m3terId(key)` | Meter ID for a registered key; reverts if absent/revoked/zero |
 | `account(id)` | uint40 Wh account; zero for absent state |
 | `nonce(id)` | uint24 nonce; zero for absent state |
 
 Storage slot 0 holds the word-array length; slot 1 is the key mapping base. Word `slot` lives at `keccak256(bytes32(0)) + slot`. Changing this layout or wire format requires a coordinated prover release.
+
+The program key remains in slot 2; the reverse mapping is appended at slot 3 and stores meter ID plus one internally. Reverse lookup adds storage work to key registration/rotation/revocation, not to `commitState`. The guest ELF and statement encoding are unchanged.
 
 `src/Rollup.sol` contains the implementation. `src/interfaces/IRollup.sol` declares the API, errors/events and M3ter owner interface. Functions are ordered external, public, internal, private; state-changing functions precede view functions, which precede pure functions within each visibility group. Generated public getters are declared with their storage variables.
 

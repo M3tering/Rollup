@@ -9,6 +9,8 @@ interface IRollup {
     error InvalidEncoding();
     error InvalidUpdate();
     error Unauthorized();
+    error KeyAlreadyRegistered();
+    error KeyNotFound();
     event KeyChanged(uint64 indexed id, bytes32 key);
     event StateCommitted(bytes updates);
     event ProgramVKeyChanged(bytes32 previousVKey, bytes32 newVKey);
@@ -20,6 +22,7 @@ interface IRollup {
     function words(uint256 slot) external view returns (uint256);
     function wordCount() external view returns (uint256);
     function publicKey(uint64 id) external view returns (bytes32);
+    function m3terId(bytes32 key) external view returns (uint64);
     function account(uint64 id) external view returns (uint40);
     function nonce(uint64 id) external view returns (uint24);
 }

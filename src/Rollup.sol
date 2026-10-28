@@ -13,6 +13,8 @@ contract Rollup is IRollup {
     address public immutable VKEY_ADMIN = msg.sender;
     address public constant M3ter = 0x2c0008b6ea87802fc729A8f34B534F9D90d7Ac53;
     uint256 public constant MAX_SLOT = type(uint32).max;
+    // ID + 1 distinguishes meter 0 from an unregistered key; zero keys are never indexed.
+    mapping(bytes32 => uint64) private _m3terIdPlusOne;
 
     /// @dev Records: uint32 slot (BE), uint256 new value (BE), strictly ascending.
     /// Transcript: chainId(32), this(20), then slot(4), old(32), new(32), usedKeysHash(32).
@@ -62,7 +64,15 @@ contract Rollup is IRollup {
     function setPublicKey(uint64 id, bytes32 key) external {
         if (id / 4 > MAX_SLOT) revert InvalidUpdate();
         if (IM3ter(M3ter).ownerOf(id) != msg.sender) revert Unauthorized();
-        publicKey[id] = key;
+        bytes32 previousKey = publicKey[id];
+        if (key != previousKey) {
+            if (key != bytes32(0)) {
+                if (_m3terIdPlusOne[key] != 0) revert KeyAlreadyRegistered();
+                _m3terIdPlusOne[key] = id + 1;
+            }
+            if (previousKey != bytes32(0)) delete _m3terIdPlusOne[previousKey];
+            publicKey[id] = key;
+        }
         emit KeyChanged(id, key);
     }
 
@@ -77,6 +87,13 @@ contract Rollup is IRollup {
 
     function wordCount() external view returns (uint256) {
         return words.length;
+    }
+
+    /// @notice Look up the meter using a currently registered, nonzero public key.
+    function m3terId(bytes32 key) external view returns (uint64) {
+        uint64 encoded = _m3terIdPlusOne[key];
+        if (encoded == 0) revert KeyNotFound();
+        return encoded - 1;
     }
 
     function account(uint64 id) external view returns (uint40) {
