@@ -1,39 +1,28 @@
 // SPDX-License-Identifier: MIT
-// Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity ^0.8.37;
 
+interface IM3ter {
+    function ownerOf(uint256 id) external view returns (address);
+}
+
 interface IRollup {
-    error InvalidBlobs();
-    error OversizeBlobs();
+    error InvalidEncoding();
+    error InvalidUpdate();
+    error Unauthorized();
+    error KeyAlreadyRegistered();
+    error KeyNotFound();
+    event KeyChanged(uint64 indexed id, bytes32 key);
+    event StateCommitted(bytes updates);
+    event ProgramVKeyChanged(bytes32 previousVKey, bytes32 newVKey);
 
-    event NewState(
-        address indexed from,
-        bytes32 indexed anchorBlock,
-        uint256 indexed chainLength,
-        bytes accountBlob,
-        bytes nonceBlob,
-        bytes proof
-    );
+    function commitState(bytes calldata updates, bytes calldata proof) external;
+    function setPublicKey(uint64 id, bytes32 key) external;
+    function setProgramVKey(bytes32 newVKey) external;
 
-    function commitState(bytes calldata accountBlob, bytes calldata nonceBlob, bytes calldata proof) external;
-
-    function QUOTA() external view returns (uint256);
-
-    function SP1_GROTH16_GATEWAY() external view returns (address);
-
-    function SP1_PROGRAM_VKEY() external view returns (bytes32);
-
-    function anchorBlock() external view returns (bytes32);
-
-    function chainLength() external view returns (uint256);
-
-    function account(uint256 tokenId) external view returns (bytes6);
-
-    function nonce(uint256 tokenId) external view returns (bytes6);
-
-    function latestStateAddress(uint256 io) external view returns (address);
-
-    function state(uint256 stateIndex, uint256 io, uint256 tokenId) external view returns (bytes6);
-
-    function stateAddress(uint256 stateIndex, uint256 io) external view returns (address);
+    function words(uint256 slot) external view returns (uint256);
+    function wordCount() external view returns (uint256);
+    function publicKey(uint64 id) external view returns (bytes32);
+    function m3terId(bytes32 key) external view returns (uint64);
+    function account(uint64 id) external view returns (uint40);
+    function nonce(uint64 id) external view returns (uint24);
 }

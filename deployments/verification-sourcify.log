@@ -1,0 +1,5 @@
+Start verifying contract `0x9a9ED9b9A9BEC10d1B5E41b1873E78d19501D5Fa` deployed on sepolia
+Compiler version: 0.8.37+commit.f401782d
+
+Verifying on sourcify...
+Contract [Rollup] "0x9a9ED9b9A9BEC10d1B5E41b1873E78d19501D5Fa" is already verified. Skipping verification.
