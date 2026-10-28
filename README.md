@@ -87,7 +87,7 @@ FOUNDRY_PROFILE=ci forge test -vvv
 
 The compiler is Solidity 0.8.37 with Cancun-compatible bytecode. Forge-std 1.16.2 is locked by Soldeer. The contract no longer needs Solady.
 
-The Sepolia deployment is `0xAb683B638f634F0a56e83acAcB81D17900606A79`; its transaction, program key, ELF checksum and meter 7 key registration are recorded in `deployments/sepolia.json`. It starts with zero accounts/nonces. Register keys through each meter's NFT owner and begin signed actions at nonce 1.
+The Sepolia deployment is `0x9a9ED9b9A9BEC10d1B5E41b1873E78d19501D5Fa`; its transaction, program key, ELF checksum and meter 7 key registration are recorded in `deployments/sepolia.json`. It starts with zero accounts/nonces. Register keys through each meter's NFT owner and begin signed actions at nonce 1.
 
 `VERIFIER` is `0x397A5f7f3dBd538f23DE225B51f532c34448dA9B`, and `M3ter` is `0x2c0008b6ea87802fc729A8f34B534F9D90d7Ac53`. `SP1_PROGRAM_VKEY` is storage-backed for testing. Only `VKEY_ADMIN` (the deploying wallet) can call `setProgramVKey(bytes32)`, only on chain ID 11155111, and zero keys are rejected. Every change emits `ProgramVKeyChanged`. This testing authority can change the transition rules, so it is a trust assumption, not a production upgrade mechanism. For a mainnet release, use a fixed, validated guest key and remove the test-only administration code. The setter is already disabled on other chains.
 
