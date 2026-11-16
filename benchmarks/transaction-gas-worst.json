@@ -1,0 +1,58 @@
+{
+  "environment": "Anvil 1.8.1 Osaka, 16,777,216 transaction cap, mock verifier and 32-byte mock proof",
+  "all_nonzero_new_words": true,
+  "measurements": [
+    {
+      "fresh": false,
+      "maximum_words_mock_only": 1100,
+      "samples": [
+        {
+          "words": 128,
+          "gas_used": 1974307,
+          "success": true
+        },
+        {
+          "words": 512,
+          "gas_used": 7813026,
+          "success": true
+        },
+        {
+          "words": 1100,
+          "gas_used": 16776292,
+          "success": true
+        },
+        {
+          "words": 1101,
+          "gas_used": 16777216,
+          "success": false
+        }
+      ]
+    },
+    {
+      "fresh": true,
+      "maximum_words_mock_only": 517,
+      "samples": [
+        {
+          "words": 128,
+          "gas_used": 4183118,
+          "success": true
+        },
+        {
+          "words": 512,
+          "gas_used": 16588237,
+          "success": true
+        },
+        {
+          "words": 517,
+          "gas_used": 16750008,
+          "success": true
+        },
+        {
+          "words": 518,
+          "gas_used": 16777216,
+          "success": false
+        }
+      ]
+    }
+  ]
+}

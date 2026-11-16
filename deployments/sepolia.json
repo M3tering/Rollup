@@ -1,0 +1,20 @@
+{
+  "chainId": 11155111,
+  "address": "0x9a9ED9b9A9BEC10d1B5E41b1873E78d19501D5Fa",
+  "deployer": "0x8aC5E3097A39e5E1412AF04673085fC1026C0b57",
+  "programVKey": "0x00d7ccad99253ce7ee8b85917c04d23c3685645613492931c9ad82efecefe06d",
+  "elfSha256": "1cdba7eb2eae2c6839ec69074a9053cbf0cce030cb16d60642e8122145a3fe12",
+  "deploymentTransaction": "0xaeb2af588768e5fce1e407e673d38500a2992282b8ea36d46f9ad864c5216161",
+  "deploymentBlock": 12010691,
+  "deploymentGas": "5491196",
+  "meter7KeyTransaction": "0x98a74ee6bb39b571b19866b06bd19f3e6fc3e7142de046fc2f019738ecfddac1",
+  "meter7ReverseLookup": "7",
+  "meter7PublicKey": "0x2e653ffbcf13dabbf1a41d112171bab4ca1d3bac00e98d80cdce7cce51920608",
+  "verifier": "0x397A5f7f3dBd538f23DE225B51f532c34448dA9B",
+  "m3ter": "0x2c0008b6ea87802fc729A8f34B534F9D90d7Ac53",
+  "genesisWordCount": "0",
+  "etherscanVerification": "verified",
+  "sourcifyCreationMatch": "exact_match",
+  "sourcifyRuntimeMatch": "exact_match",
+  "runtimeMatchesBuildArtifact": true
+}

@@ -7,8 +7,8 @@ evm_version = "cancun"
 optimizer = true
 optimizer_runs = 1000
 code_size_limit = 24576
+fs_permissions = [{ access = "read", path = "./test/fixtures" }]
 remappings = [
-    "solady@0.1.26/=dependencies/solady-0.1.26/",
     "forge-std/=dependencies/forge-std-1.16.2/src/",
 ]
 
@@ -34,4 +34,3 @@ remappings_location = "config"
 
 [dependencies]
 forge-std = "1.16.2"
-solady = "0.1.26"
